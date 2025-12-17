@@ -3,8 +3,7 @@
 ```markdown
 # Changelog
 
-## 1.0.0
-
+## 1.0.3.1
 - First public release.
 - Added Tools  
   Media Hygiene screen.
