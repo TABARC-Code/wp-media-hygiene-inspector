@@ -163,7 +163,8 @@ if ( ! class_exists( 'WP_Media_Hygiene_Inspector' ) ) {
             $query_args = array(
                 'post_type'      => 'attachment',
                 'post_status'    => 'inherit',
-                'posts_per_page' => -1,
+                'posts_per_page' => (int) apply_filters( 'wp_mhi_attachment_limit', 5000 ),
+                'no_found_rows'  => true,
                 'fields'         => 'ids',
             );
 
