@@ -8,6 +8,8 @@
  * Author URI: https://github.com/TABARC-Code
  * License: GPL-3.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
+ * Text Domain: wp-media-hygiene-inspector
+ * Requires PHP: 7.4
  *
  * Copyright (c) 2025 TABARC-Code
  * Original work by TABARC-Code.
@@ -194,6 +196,23 @@ if ( ! class_exists( 'WP_Media_Hygiene_Inspector' ) ) {
 
                 if ( $file_exists ) {
                     $paths[ $relative_path ] = true;
+
+                    // Generated sizes and the pre-scaled original belong to the attachment too.
+                    $meta      = wp_get_attachment_metadata( $attachment_id );
+                    $file_dir  = dirname( $relative_path );
+                    $file_dir  = ( '.' === $file_dir ) ? '' : trailingslashit( $file_dir );
+                    if ( is_array( $meta ) ) {
+                        if ( ! empty( $meta['original_image'] ) && is_string( $meta['original_image'] ) ) {
+                            $paths[ wp_normalize_path( $file_dir . $meta['original_image'] ) ] = true;
+                        }
+                        if ( ! empty( $meta['sizes'] ) && is_array( $meta['sizes'] ) ) {
+                            foreach ( $meta['sizes'] as $size_data ) {
+                                if ( is_array( $size_data ) && ! empty( $size_data['file'] ) && is_string( $size_data['file'] ) ) {
+                                    $paths[ wp_normalize_path( $file_dir . $size_data['file'] ) ] = true;
+                                }
+                            }
+                        }
+                    }
                     $size = filesize( $absolute_path );
 
                     if ( $size !== false && $size >= $this->large_file_threshold ) {
@@ -238,7 +257,8 @@ if ( ! class_exists( 'WP_Media_Hygiene_Inspector' ) ) {
             $count     = 0;
             $truncated = false;
 
-            $root = wp_normalize_path( $basedir );
+            $root      = wp_normalize_path( $basedir );
+            $max_files = max( 1000, (int) apply_filters( 'wp_mhi_max_files_scanned', 50000 ) );
 
             try {
                 $dir_iterator = new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS );
@@ -250,6 +270,12 @@ if ( ! class_exists( 'WP_Media_Hygiene_Inspector' ) ) {
                     }
 
                     $count++;
+
+                    // Hard stop so a huge uploads tree cannot run the request out of time.
+                    if ( $count > $max_files ) {
+                        $truncated = true;
+                        break;
+                    }
 
                     $absolute = wp_normalize_path( $file_info->getPathname() );
                     $relative = ltrim( str_replace( $root, '', $absolute ), '/\\' );
